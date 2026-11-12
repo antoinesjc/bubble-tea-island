@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networking &amp; Social Events in Taipei · Bubble Tea Island</title>
+<meta name="description" content="A curated calendar of networking, business and social events in Taipei, by Bubble Tea Island.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tea: #41754e;
+    --tea-dark: #2f5739;
+    --milk: #eec399;
+    --milk-soft: #f8e7d6;
+    --cream: #f0f1ee;
+    --ink: #1e1813;
+    --muted: #6b635c;
+    --line: #e4ddd5;
+    --card: #ffffff;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--cream);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .poppins { font-family: Poppins, Roboto, sans-serif; }
+  a { color: var(--tea); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 40px; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .views { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+  .views button {
+    border: 0; background: transparent; padding: 7px 16px; border-radius: 999px; cursor: pointer;
+    font: 500 14px Poppins, sans-serif; color: var(--muted);
+  }
+  .views button[aria-pressed="true"] { background: var(--tea); color: #fff; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    font: 500 14px Poppins, sans-serif; padding: 8px 16px; border-radius: 999px;
+    border: 1px solid var(--tea); color: var(--tea); background: #fff; cursor: pointer;
+  }
+  .btn.primary { background: var(--milk); border-color: var(--milk); color: var(--ink); }
+  .btn:hover { filter: brightness(0.96); }
+
+  /* Filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 6px 13px; border-radius: 999px; font: 500 13px Roboto, sans-serif;
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--tea)); }
+  .chip[aria-pressed="true"] { background: var(--c, var(--tea)); border-color: var(--c, var(--tea)); color: #fff; }
+  .chip[aria-pressed="true"] .dot { background: #fff; }
+  .chip .count { opacity: .7; font-size: 12px; }
+
+  /* List view */
+  .month-label {
+    font: 600 15px Poppins, sans-serif; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--tea-dark); margin: 26px 0 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .month-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .event {
+    display: grid; grid-template-columns: 74px 1fr; gap: 16px;
+    background: var(--card); border-radius: var(--radius); padding: 16px;
+    border: 1px solid var(--line); margin-bottom: 12px;
+    border-left: 5px solid var(--c, var(--tea));
+  }
+  .datebox {
+    text-align: center; background: var(--milk-soft); border-radius: 12px; padding: 8px 0;
+    height: fit-content;
+  }
+  .datebox .dow { font: 500 11px Poppins, sans-serif; text-transform: uppercase; color: var(--muted); }
+  .datebox .day { font: 700 26px/1.1 Poppins, sans-serif; color: var(--ink); }
+  .datebox .mon { font: 600 12px Poppins, sans-serif; text-transform: uppercase; color: var(--tea); }
+  .event h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; line-height: 1.35; }
+  .event h3 a { color: var(--ink); text-decoration: none; }
+  .event h3 a:hover { color: var(--tea); text-decoration: underline; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .meta span { display: inline-flex; gap: 5px; align-items: center; }
+  .desc { font-size: 14px; margin: 6px 0 10px; color: #3b342e; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pill {
+    font: 500 12px Roboto, sans-serif; padding: 3px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c, var(--tea)) 14%, white); color: var(--c, var(--tea));
+  }
+  .pill.plain { background: var(--cream); color: var(--muted); }
+  .links { margin-left: auto; display: flex; gap: 12px; font-size: 13px; }
+  .links a { font-weight: 500; text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+
+  /* Month view */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-head h2 { margin: 0; font-size: 22px; }
+  .cal-nav button {
+    border: 1px solid var(--line); background: #fff; width: 36px; height: 36px; border-radius: 50%;
+    cursor: pointer; font-size: 16px; color: var(--ink);
+  }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .grid .wd { font: 600 12px Poppins, sans-serif; text-transform: uppercase; color: var(--muted); text-align: center; padding: 4px 0; }
+  .cell {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px; min-height: 104px; padding: 6px;
+    display: flex; flex-direction: column; gap: 3px; overflow: hidden;
+  }
+  .cell.out { background: transparent; border-style: dashed; opacity: .55; }
+  .cell.today { border-color: var(--tea); box-shadow: inset 0 0 0 1px var(--tea); }
+  .cell .n { font: 600 13px Poppins, sans-serif; color: var(--muted); }
+  .cell.today .n { color: var(--tea); }
+  .mini {
+    display: block; text-decoration: none; font-size: 12px; line-height: 1.3; color: #fff;
+    background: var(--c, var(--tea)); border-radius: 6px; padding: 3px 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 0; text-align: left; font-family: Roboto, sans-serif;
+  }
+
+  /* Modal */
+  dialog {
+    border: 0; border-radius: var(--radius); padding: 0; max-width: 520px; width: calc(100% - 32px);
+    box-shadow: 0 20px 60px rgba(30, 24, 19, .25);
+  }
+  dialog::backdrop { background: rgba(30, 24, 19, .45); }
+  dialog .event { margin: 0; border: 0; border-left: 5px solid var(--c, var(--tea)); border-radius: var(--radius); }
+  .close { position: absolute; right: 10px; top: 8px; border: 0; background: transparent; font-size: 22px; cursor: pointer; color: var(--muted); }
+
+  .empty, .status { text-align: center; color: var(--muted); padding: 40px 16px; background: #fff; border-radius: var(--radius); border: 1px dashed var(--line); }
+  .foot { margin-top: 26px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    .event { grid-template-columns: 58px 1fr; gap: 12px; padding: 14px; }
+    .datebox .day { font-size: 22px; }
+    .links { margin-left: 0; width: 100%; }
+    .cell { min-height: 64px; padding: 4px; }
+    .mini { font-size: 0; height: 7px; padding: 0; border-radius: 4px; }
+    .grid { gap: 3px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <div class="views" role="group" aria-label="View">
+      <button type="button" data-view="list" aria-pressed="true">List</button>
+      <button type="button" data-view="month" aria-pressed="false">Month</button>
+    </div>
+    <div class="actions">
+      <a class="btn primary" id="subscribe" href="#" target="_blank" rel="noopener">+ Subscribe in Google Calendar</a>
+      <a class="btn" href="https://www.bubbleteaisland.com/contactus" target="_blank" rel="noopener">Suggest an event</a>
+    </div>
+  </div>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter by category"></div>
+  <div id="view"><div class="status">Loading events…</div></div>
+  <p class="foot">Curated by Bubble Tea Island. Times are Taipei time (GMT+8). Always check the organizer's page before you go.</p>
+</div>
+
+<dialog id="modal"><button class="close" type="button" aria-label="Close">&times;</button><div id="modal-body"></div></dialog>
+
+<script>
+/* ---------- Settings ---------- */
+const CONFIG = {
+  // "Published" tab of the events Sheet, published to the web as CSV
+  csvUrl: "__CSV_URL__",
+  // Public Google Calendar that readers can subscribe to
+  calendarId: "2651694a5e293f57447e57f35500e8fbdd09bcbf3fa93510d223e63c0d799bd9@group.calendar.google.com",
+  timeZone: "Asia/Taipei",
+};
+
+const CATEGORIES = {
+  "Networking":          "#41754e",
+  "Business & Trade":    "#9a6233",
+  "Startup & Tech":      "#4f67a6",
+  "Talks & Conferences": "#c07a22",
+  "Social":              "#cc5f78",
+  "Culture":             "#7d5ba6",
+};
+const fallbackColor = "#41754e";
+
+/* ---------- Helpers ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], field = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += c;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const todayISO = (() => { const d = new Date(new Date().toLocaleString("en-US", { timeZone: CONFIG.timeZone })); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; })();
+function dateParts(iso) { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); }
+function normDate(v) {
+  v = (v || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // M/D/YYYY
+  if (m) return `${m[3]}-${pad(m[1])}-${pad(m[2])}`;
+  const d = new Date(v); return isNaN(d) ? "" : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function normTime(v) { const m = (v || "").match(/(\d{1,2}):(\d{2})/); return m ? `${pad(m[1])}:${m[2]}` : ""; }
+function gcalLink(e) {
+  const d = e.date.replace(/-/g, "");
+  let dates;
+  if (e.start) {
+    const s = d + "T" + e.start.replace(":", "") + "00";
+    const en = d + "T" + (e.end || e.start).replace(":", "") + "00";
+    dates = s + "/" + en;
+  } else {
+    const next = dateParts(e.date); next.setDate(next.getDate() + 1);
+    dates = d + "/" + `${next.getFullYear()}${pad(next.getMonth() + 1)}${pad(next.getDate())}`;
+  }
+  const p = new URLSearchParams({ action: "TEMPLATE", text: e.title, dates, ctz: CONFIG.timeZone, location: e.venue, details: `${e.description}\n\n${e.link}\n\nVia Bubble Tea Island` });
+  return "https://calendar.google.com/calendar/render?" + p.toString();
+}
+
+/* ---------- State ---------- */
+let EVENTS = [];
+const state = { view: "list", cats: new Set(), month: null };
+
+function visibleEvents() {
+  return EVENTS.filter(e => state.cats.size === 0 || state.cats.has(e.category));
+}
+
+/* ---------- Rendering ---------- */
+function eventCard(e, i) {
+  const d = dateParts(e.date);
+  const c = CATEGORIES[e.category] || fallbackColor;
+  const time = e.start ? `${e.start}${e.end ? "–" + e.end : ""}` : "";
+  return `
+  <article class="event" style="--c:${c}">
+    <div class="datebox" aria-hidden="true">
+      <div class="dow">${d.toLocaleDateString("en-GB", { weekday: "short" })}</div>
+      <div class="day">${d.getDate()}</div>
+      <div class="mon">${d.toLocaleDateString("en-GB", { month: "short" })}</div>
+    </div>
+    <div>
+      <h3>${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.title)}</a>` : esc(e.title)}</h3>
+      <div class="meta">
+        ${time ? `<span>🕒 ${esc(time)}</span>` : ""}
+        ${e.venue ? `<span>📍 ${esc(e.venue)}</span>` : ""}
+        ${e.organizer ? `<span>👥 ${esc(e.organizer)}</span>` : ""}
+      </div>
+      ${e.description ? `<p class="desc">${esc(e.description)}</p>` : ""}
+      <div class="tags">
+        ${e.category ? `<span class="pill">${esc(e.category)}</span>` : ""}
+        ${e.price ? `<span class="pill plain">${esc(e.price)}</span>` : ""}
+        ${e.language ? `<span class="pill plain">${esc(e.language)}</span>` : ""}
+        <span class="links">
+          ${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">Details &amp; tickets →</a>` : ""}
+          <a href="${esc(gcalLink(e))}" target="_blank" rel="noopener">Add to calendar</a>
+        </span>
+      </div>
+    </div>
+  </article>`;
+}
+
+function renderFilters() {
+  const counts = {};
+  EVENTS.forEach(e => counts[e.category] = (counts[e.category] || 0) + 1);
+  const cats = Object.keys(CATEGORIES).filter(c => counts[c]);
+  document.getElementById("filters").innerHTML =
+    `<button class="chip" type="button" data-cat="" aria-pressed="${state.cats.size === 0}">All <span class="count">${EVENTS.length}</span></button>` +
+    cats.map(c => `<button class="chip" type="button" data-cat="${esc(c)}" style="--c:${CATEGORIES[c]}" aria-pressed="${state.cats.has(c)}"><span class="dot"></span>${esc(c)} <span class="count">${counts[c]}</span></button>`).join("");
+}
+
+function renderList() {
+  const list = visibleEvents().filter(e => e.date >= todayISO);
+  if (!list.length) return `<div class="empty">No upcoming events in this category yet. Check back soon!</div>`;
+  let html = "", lastMonth = "";
+  list.forEach((e, i) => {
+    const d = dateParts(e.date);
+    const label = d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    if (label !== lastMonth) { html += `<div class="month-label">${label}</div>`; lastMonth = label; }
+    html += eventCard(e, i);
+  });
+  return html;
+}
+
+function renderMonth() {
+  if (!state.month) { const t = dateParts(todayISO); state.month = new Date(t.getFullYear(), t.getMonth(), 1); }
+  const first = state.month, y = first.getFullYear(), m = first.getMonth();
+  const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7)); // weeks start on Monday
+  const byDay = {};
+  visibleEvents().forEach((e, i) => (byDay[e.date] ||= []).push(e));
+  const offset = (first.getDay() + 6) % 7;
+  const total = Math.ceil((offset + new Date(y, m + 1, 0).getDate()) / 7) * 7;
+  let cells = "";
+  for (let i = 0; i < total; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const evs = byDay[iso] || [];
+    cells += `<div class="cell${d.getMonth() !== m ? " out" : ""}${iso === todayISO ? " today" : ""}">
+      <span class="n">${d.getDate()}</span>
+      ${evs.map(e => `<button type="button" class="mini" style="--c:${CATEGORIES[e.category] || fallbackColor}" data-idx="${EVENTS.indexOf(e)}" title="${esc(e.title)}">${e.start ? esc(e.start) + " " : ""}${esc(e.title)}</button>`).join("")}
+    </div>`;
+  }
+  const wds = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div class="wd">${w}</div>`).join("");
+  return `<div class="cal-head">
+      <h2>${first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</h2>
+      <div class="cal-nav"><button type="button" data-nav="-1" aria-label="Previous month">‹</button> <button type="button" data-nav="1" aria-label="Next month">›</button></div>
+    </div>
+    <div class="grid">${wds}${cells}</div>`;
+}
+
+function render() {
+  renderFilters();
+  document.getElementById("view").innerHTML = state.view === "list" ? renderList() : renderMonth();
+  document.querySelectorAll(".views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  postHeight();
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click", ev => {
+  const v = ev.target.closest("[data-view]");
+  if (v) { state.view = v.dataset.view; render(); return; }
+  const chip = ev.target.closest("[data-cat]");
+  if (chip) {
+    const c = chip.dataset.cat;
+    if (!c) state.cats.clear();
+    else state.cats.has(c) ? state.cats.delete(c) : state.cats.add(c);
+    render(); return;
+  }
+  const nav = ev.target.closest("[data-nav]");
+  if (nav) { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + Number(nav.dataset.nav), 1); render(); return; }
+  const mini = ev.target.closest(".mini");
+  if (mini) {
+    const e = EVENTS[Number(mini.dataset.idx)];
+    document.getElementById("modal-body").innerHTML = eventCard(e);
+    document.getElementById("modal").showModal(); return;
+  }
+  if (ev.target.closest(".close") || ev.target.id === "modal") document.getElementById("modal").close();
+});
+
+/* Tell a parent page (e.g. Odoo iframe) how tall we are */
+function postHeight() {
+  try { parent.postMessage({ type: "bti-events-height", height: document.documentElement.scrollHeight }, "*"); } catch (_) {}
+}
+window.addEventListener("resize", postHeight);
+
+/* ---------- Load ---------- */
+document.getElementById("subscribe").href =
+  "https://calendar.google.com/calendar/u/0?cid=" + btoa(CONFIG.calendarId).replace(/=+$/, "");
+
+fetch(CONFIG.csvUrl + (CONFIG.csvUrl.includes("?") ? "&" : "?") + "t=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(text => {
+    const rows = parseCSV(text);
+    const head = rows.shift().map(h => h.trim().toLowerCase());
+    const col = name => head.indexOf(name);
+    EVENTS = rows
+      .map(r => ({
+        date: normDate(r[col("date")]),
+        start: normTime(r[col("start")]),
+        end: normTime(r[col("end")]),
+        title: (r[col("title")] || "").trim(),
+        category: (r[col("category")] || "").trim(),
+        organizer: (r[col("organizer")] || "").trim(),
+        venue: (r[col("venue")] || "").trim(),
+        price: (r[col("price")] || "").trim(),
+        language: (r[col("language")] || "").trim(),
+        link: (r[col("link")] || "").trim(),
+        description: (r[col("description")] || "").trim(),
+      }))
+      .filter(e => e.date && e.title)
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    render();
+  })
+  .catch(() => {
+    document.getElementById("view").innerHTML = `<div class="status">The calendar couldn't load right now. Please refresh in a moment.</div>`;
+    postHeight();
+  });
+</script>
+</body>
+</html>
