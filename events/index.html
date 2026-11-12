@@ -464,10 +464,18 @@ document.addEventListener("click", ev => {
 });
 
 /* Tell a parent page (e.g. Odoo iframe) how tall we are */
+/* Report the real content height (not the frame's), so the frame shrinks as well as grows */
+let lastH = 0;
 function postHeight() {
-  try { parent.postMessage({ type: "bti-events-height", height: document.documentElement.scrollHeight }, "*"); } catch (_) {}
+  const wrap = document.querySelector(".wrap");
+  const h = Math.ceil(wrap.getBoundingClientRect().height) + 4;
+  if (Math.abs(h - lastH) < 2) return;
+  lastH = h;
+  try { parent.postMessage({ type: "bti-events-height", height: h }, "*"); } catch (_) {}
 }
 window.addEventListener("resize", postHeight);
+if ("ResizeObserver" in window) new ResizeObserver(postHeight).observe(document.querySelector(".wrap"));
+document.fonts && document.fonts.ready.then(postHeight);
 
 /* ---------- Load ---------- */
 document.getElementById("subscribe").href =

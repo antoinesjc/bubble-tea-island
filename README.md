@@ -41,12 +41,14 @@ Paste this into an Odoo *Embed Code* block:
 
 ```html
 <iframe id="bti-events" src="https://antoinesjc.github.io/bubble-tea-island/events/"
-        style="width:100%;border:0;min-height:900px" loading="lazy"
+        style="width:100%;border:0;height:760px" loading="lazy"
         title="Networking & social events in Taipei"></iframe>
 <script>
   window.addEventListener("message", function (e) {
     if (e.data && e.data.type === "bti-events-height") {
-      document.getElementById("bti-events").style.height = e.data.height + "px";
+      var f = document.getElementById("bti-events");
+      f.style.minHeight = "0";
+      f.style.height = e.data.height + "px";
     }
   });
 </script>
