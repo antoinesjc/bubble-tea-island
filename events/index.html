@@ -150,6 +150,8 @@
   .close { position: absolute; right: 10px; top: 8px; border: 0; background: transparent; font-size: 22px; cursor: pointer; color: var(--muted); }
 
   .empty, .status { text-align: center; color: var(--muted); padding: 40px 16px; background: #fff; border-radius: var(--radius); border: 1px dashed var(--line); }
+  .more-wrap { text-align: center; margin-top: 6px; }
+  .more-wrap .note { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
   .foot { margin-top: 26px; font-size: 13px; color: var(--muted); text-align: center; }
 
   @media (max-width: 640px) {
@@ -166,8 +168,8 @@
 <div class="wrap">
   <div class="toolbar">
     <div class="views" role="group" aria-label="View">
-      <button type="button" data-view="list" aria-pressed="true">List</button>
-      <button type="button" data-view="month" aria-pressed="false">Month</button>
+      <button type="button" data-view="month" aria-pressed="true">Month</button>
+      <button type="button" data-view="list" aria-pressed="false">List</button>
     </div>
     <div class="actions">
       <a class="btn primary" id="subscribe" href="#" target="_blank" rel="noopener">+ Subscribe in Google Calendar</a>
@@ -257,7 +259,8 @@ function gcalLink(e) {
 
 /* ---------- State ---------- */
 let EVENTS = [];
-const state = { view: "list", cats: new Set(), cost: "all", month: null };
+const PAGE_SIZE = 8;
+const state = { view: "month", cats: new Set(), cost: "all", month: null, shown: PAGE_SIZE };
 
 /* Free or paid, worked out from the Price column */
 function costType(price) {
@@ -331,12 +334,16 @@ function renderList() {
   const list = visibleEvents().filter(e => (e.endDate || e.date) >= todayISO);
   if (!list.length) return `<div class="empty">${state.cats.size || state.cost !== "all" ? "No upcoming events match these filters yet." : "No upcoming events listed yet."} Check back soon!</div>`;
   let html = "", lastMonth = "";
-  list.forEach((e, i) => {
+  list.slice(0, state.shown).forEach((e, i) => {
     const d = dateParts(e.date);
     const label = d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     if (label !== lastMonth) { html += `<div class="month-label">${label}</div>`; lastMonth = label; }
     html += eventCard(e, i);
   });
+  if (list.length > state.shown) {
+    const left = list.length - state.shown;
+    html += `<div class="more-wrap"><button type="button" class="btn" data-more>Show ${Math.min(PAGE_SIZE, left)} more events</button><span class="note">Showing ${state.shown} of ${list.length}</span></div>`;
+  }
   return html;
 }
 
@@ -385,14 +392,16 @@ function render() {
 /* ---------- Events ---------- */
 document.addEventListener("click", ev => {
   const v = ev.target.closest("[data-view]");
-  if (v) { state.view = v.dataset.view; render(); return; }
+  if (v) { state.view = v.dataset.view; state.shown = PAGE_SIZE; render(); return; }
+  if (ev.target.closest("[data-more]")) { state.shown += PAGE_SIZE; render(); return; }
   const cost = ev.target.closest("[data-cost]");
-  if (cost) { state.cost = cost.dataset.cost; render(); return; }
+  if (cost) { state.cost = cost.dataset.cost; state.shown = PAGE_SIZE; render(); return; }
   const chip = ev.target.closest("[data-cat]");
   if (chip) {
     const c = chip.dataset.cat;
     if (!c) state.cats.clear();
     else state.cats.has(c) ? state.cats.delete(c) : state.cats.add(c);
+    state.shown = PAGE_SIZE;
     render(); return;
   }
   const nav = ev.target.closest("[data-nav]");
