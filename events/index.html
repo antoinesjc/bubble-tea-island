@@ -65,6 +65,13 @@
   .chip[aria-pressed="true"] { background: var(--c, var(--tea)); border-color: var(--c, var(--tea)); color: #fff; }
   .chip[aria-pressed="true"] .dot { background: #fff; }
   .chip .count { opacity: .7; font-size: 12px; }
+  .filters .sep { flex-basis: 100%; height: 0; }
+  .cost { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px; align-items: center; }
+  .cost .lbl { font: 500 12px Poppins, sans-serif; color: var(--muted); padding: 0 8px 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .cost button { border: 0; background: transparent; padding: 5px 13px; border-radius: 999px; cursor: pointer; font: 500 13px Roboto, sans-serif; color: var(--ink); }
+  .cost button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .cost button .count { opacity: .65; font-size: 12px; margin-left: 3px; }
+  .pill.free { background: #e2efe5; color: var(--tea-dark); font-weight: 600; }
 
   /* List view */
   .month-label {
@@ -159,7 +166,7 @@
     </div>
   </div>
 
-  <div class="filters" id="filters" role="group" aria-label="Filter by category"></div>
+  <div class="filters" id="filters" role="group" aria-label="Filter events"></div>
   <div id="view"><div class="status">Loading events…</div></div>
   <p class="foot">Curated by Bubble Tea Island. Times are Taipei time (GMT+8). Always check the organizer's page before you go.</p>
 </div>
@@ -233,10 +240,21 @@ function gcalLink(e) {
 
 /* ---------- State ---------- */
 let EVENTS = [];
-const state = { view: "list", cats: new Set(), month: null };
+const state = { view: "list", cats: new Set(), cost: "all", month: null };
+
+/* Free or paid, worked out from the Price column */
+function costType(price) {
+  const p = (price || "").trim().toLowerCase();
+  if (!p) return "unknown";
+  if (/^(free|免費|complimentary)\b|free entry|free admission|^nt\$\s*0$/.test(p)) return "free";
+  if (/\d|nt\$|us\$|€|\$|paid|ticket/.test(p)) return "paid";
+  return "unknown";
+}
 
 function visibleEvents() {
-  return EVENTS.filter(e => state.cats.size === 0 || state.cats.has(e.category));
+  return EVENTS.filter(e =>
+    (state.cats.size === 0 || state.cats.has(e.category)) &&
+    (state.cost === "all" || e.cost === state.cost));
 }
 
 /* ---------- Rendering ---------- */
@@ -261,7 +279,7 @@ function eventCard(e, i) {
       ${e.description ? `<p class="desc">${esc(e.description)}</p>` : ""}
       <div class="tags">
         ${e.category ? `<span class="pill">${esc(e.category)}</span>` : ""}
-        ${e.price ? `<span class="pill plain">${esc(e.price)}</span>` : ""}
+        ${e.cost === "free" ? `<span class="pill free">Free</span>` : e.price ? `<span class="pill plain">${/^see /i.test(e.price) ? "Price: " + esc(e.price.toLowerCase()) : esc(e.price)}</span>` : ""}
         ${e.language ? `<span class="pill plain">${esc(e.language)}</span>` : ""}
         <span class="links">
           ${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">Details &amp; tickets →</a>` : ""}
@@ -278,12 +296,17 @@ function renderFilters() {
   const cats = Object.keys(CATEGORIES).filter(c => counts[c]);
   document.getElementById("filters").innerHTML =
     `<button class="chip" type="button" data-cat="" aria-pressed="${state.cats.size === 0}">All <span class="count">${EVENTS.length}</span></button>` +
-    cats.map(c => `<button class="chip" type="button" data-cat="${esc(c)}" style="--c:${CATEGORIES[c]}" aria-pressed="${state.cats.has(c)}"><span class="dot"></span>${esc(c)} <span class="count">${counts[c]}</span></button>`).join("");
+    cats.map(c => `<button class="chip" type="button" data-cat="${esc(c)}" style="--c:${CATEGORIES[c]}" aria-pressed="${state.cats.has(c)}"><span class="dot"></span>${esc(c)} <span class="count">${counts[c]}</span></button>`).join("") +
+    `<span class="sep"></span>` +
+    `<div class="cost" role="group" aria-label="Free or paid"><span class="lbl">Price</span>` +
+    [["all", "Any"], ["free", "Free"], ["paid", "Paid"]].map(([k, l]) =>
+      `<button type="button" data-cost="${k}" aria-pressed="${state.cost === k}">${l}${k !== "all" ? `<span class="count">${EVENTS.filter(e => e.cost === k).length}</span>` : ""}</button>`).join("") +
+    `</div>`;
 }
 
 function renderList() {
   const list = visibleEvents().filter(e => e.date >= todayISO);
-  if (!list.length) return `<div class="empty">${state.cats.size ? "No upcoming events in this category yet." : "No upcoming events listed yet."} Check back soon!</div>`;
+  if (!list.length) return `<div class="empty">${state.cats.size || state.cost !== "all" ? "No upcoming events match these filters yet." : "No upcoming events listed yet."} Check back soon!</div>`;
   let html = "", lastMonth = "";
   list.forEach((e, i) => {
     const d = dateParts(e.date);
@@ -331,6 +354,8 @@ function render() {
 document.addEventListener("click", ev => {
   const v = ev.target.closest("[data-view]");
   if (v) { state.view = v.dataset.view; render(); return; }
+  const cost = ev.target.closest("[data-cost]");
+  if (cost) { state.cost = cost.dataset.cost; render(); return; }
   const chip = ev.target.closest("[data-cat]");
   if (chip) {
     const c = chip.dataset.cat;
@@ -379,6 +404,7 @@ fetch(CONFIG.csvUrl + (CONFIG.csvUrl.includes("?") ? "&" : "?") + "t=" + Date.no
         link: (r[col("link")] || "").trim(),
         description: (r[col("description")] || "").trim(),
       }))
+      .map(e => ({ ...e, cost: costType(e.price) }))
       .filter(e => e.date && e.title)
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     render();
