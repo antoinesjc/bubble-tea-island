@@ -283,7 +283,7 @@ function renderFilters() {
 
 function renderList() {
   const list = visibleEvents().filter(e => e.date >= todayISO);
-  if (!list.length) return `<div class="empty">No upcoming events in this category yet. Check back soon!</div>`;
+  if (!list.length) return `<div class="empty">${state.cats.size ? "No upcoming events in this category yet." : "No upcoming events listed yet."} Check back soon!</div>`;
   let html = "", lastMonth = "";
   list.forEach((e, i) => {
     const d = dateParts(e.date);
