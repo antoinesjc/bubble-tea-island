@@ -28,6 +28,8 @@ Live page: https://antoinesjc.github.io/bubble-tea-island/events/
 
 Networking · Business & Trade · Startup & Tech · Talks & Conferences · Social · Culture
 
+Multi-day events: put the first day in **Date** and the last day in **End date** (Inbox column P). The page shows them as a date range and spans them across every day in the month view.
+
 Colors are set in `CATEGORIES` at the bottom of `events/index.html`. Adding a category
 means adding it there and to the Category dropdown in the Sheet.
 

@@ -115,7 +115,8 @@
     border: 1px solid var(--line); background: #fff; width: 36px; height: 36px; border-radius: 50%;
     cursor: pointer; font-size: 16px; color: var(--ink);
   }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .cell { min-width: 0; }
   .grid .wd { font: 600 12px Poppins, sans-serif; text-transform: uppercase; color: var(--muted); text-align: center; padding: 4px 0; }
   .cell {
     background: #fff; border: 1px solid var(--line); border-radius: 10px; min-height: 104px; padding: 6px;
@@ -130,6 +131,14 @@
     background: var(--c, var(--tea)); border-radius: 6px; padding: 3px 6px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 0; text-align: left; font-family: Roboto, sans-serif;
   }
+
+  .mini.span-mid, .mini.span-end { opacity: .82; }
+  .mini.span-start { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: -7px; }
+  .mini.span-mid { border-radius: 0; margin-left: -7px; margin-right: -7px; }
+  .mini.span-end { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -7px; }
+  .cell { overflow: visible; }
+  .datebox .day.range { font-size: 20px; letter-spacing: -.02em; }
+  .multi { font: 600 11px Poppins, sans-serif; color: var(--tea); text-transform: uppercase; letter-spacing: .04em; }
 
   /* Modal */
   dialog {
@@ -222,16 +231,24 @@ function normDate(v) {
   if (m) return `${m[3]}-${pad(m[1])}-${pad(m[2])}`;
   const d = new Date(v); return isNaN(d) ? "" : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+function isoOf(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function daysOf(e) {
+  const out = [], d = dateParts(e.date), last = e.endDate || e.date;
+  for (let i = 0; i < 62 && isoOf(d) <= last; i++) { out.push(isoOf(d)); d.setDate(d.getDate() + 1); }
+  return out;
+}
+const fmtDay = iso => dateParts(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 function normTime(v) { const m = (v || "").match(/(\d{1,2}):(\d{2})/); return m ? `${pad(m[1])}:${m[2]}` : ""; }
 function gcalLink(e) {
   const d = e.date.replace(/-/g, "");
   let dates;
-  if (e.start) {
+  const dEnd = (e.endDate || e.date).replace(/-/g, "");
+  if (e.start && !e.endDate) {
     const s = d + "T" + e.start.replace(":", "") + "00";
     const en = d + "T" + (e.end || e.start).replace(":", "") + "00";
     dates = s + "/" + en;
   } else {
-    const next = dateParts(e.date); next.setDate(next.getDate() + 1);
+    const next = dateParts(e.endDate || e.date); next.setDate(next.getDate() + 1);
     dates = d + "/" + `${next.getFullYear()}${pad(next.getMonth() + 1)}${pad(next.getDate())}`;
   }
   const p = new URLSearchParams({ action: "TEMPLATE", text: e.title, dates, ctz: CONFIG.timeZone, location: e.venue, details: `${e.description}\n\n${e.link}\n\nVia Bubble Tea Island` });
@@ -262,17 +279,23 @@ function eventCard(e, i) {
   const d = dateParts(e.date);
   const c = CATEGORIES[e.category] || fallbackColor;
   const time = e.start ? `${e.start}${e.end ? "–" + e.end : ""}` : "";
+  const multi = !!e.endDate;
+  const de = multi ? dateParts(e.endDate) : null;
+  const sameMonth = multi && de.getMonth() === d.getMonth();
+  const dayLabel = multi ? (sameMonth ? `${d.getDate()}–${de.getDate()}` : `${d.getDate()}`) : `${d.getDate()}`;
+  const when = multi ? `${fmtDay(e.date)} to ${fmtDay(e.endDate)}${time ? ", daily " + time : ""}` : time;
   return `
   <article class="event" style="--c:${c}">
     <div class="datebox" aria-hidden="true">
       <div class="dow">${d.toLocaleDateString("en-GB", { weekday: "short" })}</div>
-      <div class="day">${d.getDate()}</div>
-      <div class="mon">${d.toLocaleDateString("en-GB", { month: "short" })}</div>
+      <div class="day${multi && sameMonth ? " range" : ""}">${dayLabel}</div>
+      <div class="mon">${d.toLocaleDateString("en-GB", { month: "short" })}${multi && !sameMonth ? "–" + de.getDate() + " " + de.toLocaleDateString("en-GB", { month: "short" }) : ""}</div>
+      ${multi ? `<div class="multi">${daysOf(e).length} days</div>` : ""}
     </div>
     <div>
       <h3>${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.title)}</a>` : esc(e.title)}</h3>
       <div class="meta">
-        ${time ? `<span>🕒 ${esc(time)}</span>` : ""}
+        ${when ? `<span>🕒 ${esc(when)}</span>` : ""}
         ${e.venue ? `<span>📍 ${esc(e.venue)}</span>` : ""}
         ${e.organizer ? `<span>👥 ${esc(e.organizer)}</span>` : ""}
       </div>
@@ -305,7 +328,7 @@ function renderFilters() {
 }
 
 function renderList() {
-  const list = visibleEvents().filter(e => e.date >= todayISO);
+  const list = visibleEvents().filter(e => (e.endDate || e.date) >= todayISO);
   if (!list.length) return `<div class="empty">${state.cats.size || state.cost !== "all" ? "No upcoming events match these filters yet." : "No upcoming events listed yet."} Check back soon!</div>`;
   let html = "", lastMonth = "";
   list.forEach((e, i) => {
@@ -322,7 +345,12 @@ function renderMonth() {
   const first = state.month, y = first.getFullYear(), m = first.getMonth();
   const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7)); // weeks start on Monday
   const byDay = {};
-  visibleEvents().forEach((e, i) => (byDay[e.date] ||= []).push(e));
+  visibleEvents().forEach(e => {
+    const days = daysOf(e);
+    days.forEach((iso, k) => (byDay[iso] ||= []).push({ e, part: days.length === 1 ? "" : k === 0 ? "span-start" : k === days.length - 1 ? "span-end" : "span-mid", k }));
+  });
+  // keep multi-day bars on top so they line up across days
+  Object.values(byDay).forEach(a => a.sort((x, y) => (y.part ? 1 : 0) - (x.part ? 1 : 0) || (x.e.start || "").localeCompare(y.e.start || "")));
   const offset = (first.getDay() + 6) % 7;
   const total = Math.ceil((offset + new Date(y, m + 1, 0).getDate()) / 7) * 7;
   let cells = "";
@@ -332,7 +360,11 @@ function renderMonth() {
     const evs = byDay[iso] || [];
     cells += `<div class="cell${d.getMonth() !== m ? " out" : ""}${iso === todayISO ? " today" : ""}">
       <span class="n">${d.getDate()}</span>
-      ${evs.map(e => `<button type="button" class="mini" style="--c:${CATEGORIES[e.category] || fallbackColor}" data-idx="${EVENTS.indexOf(e)}" title="${esc(e.title)}">${e.start ? esc(e.start) + " " : ""}${esc(e.title)}</button>`).join("")}
+      ${evs.map(({ e, part, k }) => {
+        const weekStart = d.getDay() === 1;
+        const label = (part === "" || part === "span-start") ? `${e.start && !part ? esc(e.start) + " " : ""}${esc(e.title)}` : (weekStart ? esc(e.title) : "&nbsp;");
+        return `<button type="button" class="mini ${part}" style="--c:${CATEGORIES[e.category] || fallbackColor}" data-idx="${EVENTS.indexOf(e)}" title="${esc(e.title)}">${label}</button>`;
+      }).join("")}
     </div>`;
   }
   const wds = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div class="wd">${w}</div>`).join("");
@@ -403,7 +435,9 @@ fetch(CONFIG.csvUrl + (CONFIG.csvUrl.includes("?") ? "&" : "?") + "t=" + Date.no
         language: (r[col("language")] || "").trim(),
         link: (r[col("link")] || "").trim(),
         description: (r[col("description")] || "").trim(),
+        endDate: normDate(r[col("end date")]),
       }))
+      .map(e => ({ ...e, endDate: e.endDate && e.endDate > e.date ? e.endDate : "" }))
       .map(e => ({ ...e, cost: costType(e.price) }))
       .filter(e => e.date && e.title)
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
