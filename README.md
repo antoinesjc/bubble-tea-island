@@ -28,6 +28,8 @@ Live page: https://antoinesjc.github.io/bubble-tea-island/events/
 
 Networking · Business & Trade · Startup & Tech · Talks & Conferences · Social · Culture
 
+Featured events: tick **Featured** (Inbox column Q) on an approved event. It is pinned at the top of the list view and shown as a tile beside the month view until it has passed.
+
 Multi-day events: put the first day in **Date** and the last day in **End date** (Inbox column P). The page shows them as a date range and spans them across every day in the month view.
 
 Colors are set in `CATEGORIES` at the bottom of `events/index.html`. Adding a category

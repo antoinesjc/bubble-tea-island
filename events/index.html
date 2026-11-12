@@ -150,6 +150,35 @@
   .close { position: absolute; right: 10px; top: 8px; border: 0; background: transparent; font-size: 22px; cursor: pointer; color: var(--muted); }
 
   .empty, .status { text-align: center; color: var(--muted); padding: 40px 16px; background: #fff; border-radius: var(--radius); border: 1px dashed var(--line); }
+  /* Featured */
+  .badge-feat {
+    display: inline-flex; align-items: center; gap: 4px; font: 600 11px Poppins, sans-serif;
+    text-transform: uppercase; letter-spacing: .05em; color: #7a4a17; background: var(--milk);
+    padding: 3px 9px; border-radius: 999px; margin-bottom: 6px;
+  }
+  .event.featured { background: linear-gradient(0deg, #fff, #fff8f0); border-color: var(--milk); border-left-color: var(--c, var(--tea)); }
+  .feat-label { color: #9a6233; }
+  .month-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: start; }
+  .side h2 { font-size: 15px; margin: 6px 0 12px; display: flex; align-items: center; gap: 8px; color: #7a4a17; }
+  .side h2 .star { color: #c98a3c; }
+  .ftile {
+    display: block; background: #fff; border: 1px solid var(--milk); border-radius: 14px; padding: 12px 14px;
+    margin-bottom: 12px; text-align: left; width: 100%; cursor: pointer; font: inherit; color: inherit;
+    border-top: 4px solid var(--c, var(--tea)); box-shadow: 0 2px 10px rgba(122, 74, 23, .06);
+  }
+  .ftile:hover { box-shadow: 0 4px 16px rgba(122, 74, 23, .14); }
+  .ftile .fdate { font: 600 12px Poppins, sans-serif; color: var(--tea); text-transform: uppercase; letter-spacing: .03em; }
+  .ftile .ftitle { font: 600 15px/1.3 Poppins, sans-serif; margin: 3px 0 6px; }
+  .ftile .fmeta { font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .ftile .tags { margin-top: 8px; }
+  .mini.feat::before { content: "★ "; }
+  @media (max-width: 860px) {
+    .month-layout { grid-template-columns: 1fr; }
+    .side { order: -1; }
+    .side .tiles { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+    .side .ftile { flex: 0 0 78%; max-width: 300px; margin-bottom: 0; scroll-snap-align: start; }
+  }
+
   .more-wrap { text-align: center; margin-top: 6px; }
   .more-wrap .note { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
   .foot { margin-top: 26px; font-size: 13px; color: var(--muted); text-align: center; }
@@ -288,7 +317,7 @@ function eventCard(e, i) {
   const dayLabel = multi ? (sameMonth ? `${d.getDate()}–${de.getDate()}` : `${d.getDate()}`) : `${d.getDate()}`;
   const when = multi ? `${fmtDay(e.date)} to ${fmtDay(e.endDate)}${time ? ", daily " + time : ""}` : time;
   return `
-  <article class="event" style="--c:${c}">
+  <article class="event${e.featured ? " featured" : ""}" style="--c:${c}">
     <div class="datebox" aria-hidden="true">
       <div class="dow">${d.toLocaleDateString("en-GB", { weekday: "short" })}</div>
       <div class="day${multi && sameMonth ? " range" : ""}">${dayLabel}</div>
@@ -296,6 +325,7 @@ function eventCard(e, i) {
       ${multi ? `<div class="multi">${daysOf(e).length} days</div>` : ""}
     </div>
     <div>
+      ${e.featured ? `<div class="badge-feat">★ Featured</div>` : ""}
       <h3>${e.link ? `<a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.title)}</a>` : esc(e.title)}</h3>
       <div class="meta">
         ${when ? `<span>🕒 ${esc(when)}</span>` : ""}
@@ -331,9 +361,13 @@ function renderFilters() {
 }
 
 function renderList() {
-  const list = visibleEvents().filter(e => (e.endDate || e.date) >= todayISO);
-  if (!list.length) return `<div class="empty">${state.cats.size || state.cost !== "all" ? "No upcoming events match these filters yet." : "No upcoming events listed yet."} Check back soon!</div>`;
-  let html = "", lastMonth = "";
+  const all = visibleEvents().filter(e => (e.endDate || e.date) >= todayISO);
+  const feat = all.filter(e => e.featured);
+  const list = all.filter(e => !e.featured);
+  let top = "";
+  if (feat.length) top = `<div class="month-label feat-label">★ Featured</div>` + feat.map(e => eventCard(e)).join("");
+  if (!all.length) return `<div class="empty">${state.cats.size || state.cost !== "all" ? "No upcoming events match these filters yet." : "No upcoming events listed yet."} Check back soon!</div>`;
+  let html = top, lastMonth = "";
   list.slice(0, state.shown).forEach((e, i) => {
     const d = dateParts(e.date);
     const label = d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -370,16 +404,30 @@ function renderMonth() {
       ${evs.map(({ e, part, k }) => {
         const weekStart = d.getDay() === 1;
         const label = (part === "" || part === "span-start") ? `${e.start && !part ? esc(e.start) + " " : ""}${esc(e.title)}` : (weekStart ? esc(e.title) : "&nbsp;");
-        return `<button type="button" class="mini ${part}" style="--c:${CATEGORIES[e.category] || fallbackColor}" data-idx="${EVENTS.indexOf(e)}" title="${esc(e.title)}">${label}</button>`;
+        return `<button type="button" class="mini ${part}${e.featured && (part === "" || part === "span-start" || weekStart) ? " feat" : ""}" style="--c:${CATEGORIES[e.category] || fallbackColor}" data-idx="${EVENTS.indexOf(e)}" title="${esc(e.title)}">${label}</button>`;
       }).join("")}
     </div>`;
   }
   const wds = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div class="wd">${w}</div>`).join("");
-  return `<div class="cal-head">
+  const grid = `<div class="cal-head">
       <h2>${first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</h2>
       <div class="cal-nav"><button type="button" data-nav="-1" aria-label="Previous month">‹</button> <button type="button" data-nav="1" aria-label="Next month">›</button></div>
     </div>
     <div class="grid">${wds}${cells}</div>`;
+  const feat = visibleEvents().filter(e => e.featured && (e.endDate || e.date) >= todayISO);
+  if (!feat.length) return grid;
+  const tiles = feat.map(e => {
+    const c = CATEGORIES[e.category] || fallbackColor;
+    const when = e.endDate ? `${fmtDay(e.date)} to ${fmtDay(e.endDate)}` : fmtDay(e.date);
+    const time = e.start ? `${e.start}${e.end ? "–" + e.end : ""}` : "";
+    return `<button type="button" class="ftile" style="--c:${c}" data-idx="${EVENTS.indexOf(e)}">
+      <div class="fdate">${esc(when)}${time ? " · " + esc(time) : ""}</div>
+      <div class="ftitle">${esc(e.title)}</div>
+      <div class="fmeta">${e.venue ? "📍 " + esc(e.venue) : ""}</div>
+      <div class="tags">${e.category ? `<span class="pill">${esc(e.category)}</span>` : ""}${e.cost === "free" ? `<span class="pill free">Free</span>` : ""}</div>
+    </button>`;
+  }).join("");
+  return `<div class="month-layout"><div>${grid}</div><aside class="side" aria-label="Featured events"><h2><span class="star">★</span> Featured</h2><div class="tiles">${tiles}</div></aside></div>`;
 }
 
 function render() {
@@ -406,7 +454,7 @@ document.addEventListener("click", ev => {
   }
   const nav = ev.target.closest("[data-nav]");
   if (nav) { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + Number(nav.dataset.nav), 1); render(); return; }
-  const mini = ev.target.closest(".mini");
+  const mini = ev.target.closest(".mini, .ftile");
   if (mini) {
     const e = EVENTS[Number(mini.dataset.idx)];
     document.getElementById("modal-body").innerHTML = eventCard(e);
@@ -445,6 +493,7 @@ fetch(CONFIG.csvUrl + (CONFIG.csvUrl.includes("?") ? "&" : "?") + "t=" + Date.no
         link: (r[col("link")] || "").trim(),
         description: (r[col("description")] || "").trim(),
         endDate: normDate(r[col("end date")]),
+        featured: /^(true|yes|y|x|1|✓|✔)$/i.test((r[col("featured")] || "").trim()),
       }))
       .map(e => ({ ...e, endDate: e.endDate && e.endDate > e.date ? e.endDate : "" }))
       .map(e => ({ ...e, cost: costType(e.price) }))
